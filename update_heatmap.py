@@ -2,8 +2,11 @@ from PIL import Image
 import numpy as np
 import requests
 from io import BytesIO
+from hashlib import sha256
+import datetime
 
 colours = [
+    (255, 255, 255),
     (255, 255, 255),
     (199, 0, 254),
     (206, 0, 133),
@@ -18,7 +21,6 @@ colours = [
     (0, 128, 129),
     (0, 79, 255),
     (4, 206, 250),
-    (0, 0, 0),
     (0, 0, 0)
 ]
 
@@ -28,10 +30,21 @@ background_array = np.array(Image.open('west_java.png').convert('RGB'))
 image_url = 'https://dataweb.bmkg.go.id/MEWS/Radar/TANG_SingleLayerCRefQC.png'
 image_array = np.array(Image.open(BytesIO(requests.get(image_url).content)).convert('RGB'))
 # image_array = np.array(Image.open('TANG_SingleLayerCRefQC_1.png').convert('RGB'))
-output_array = np.zeros(image_array.shape)
-output_array[image_array != background_array] = image_array[image_array != background_array]
-output_array[:50, ...] = 0
-output_array = np.array(Image.fromarray(output_array.astype(np.uint8)).quantize(palette=palette_image).convert('RGB'))
+heatmap_array = np.zeros(image_array.shape)
+output_array = np.zeros(image_array.shape[:2], dtype=np.uint8)
+heatmap_array[image_array != background_array] = image_array[image_array != background_array]
+timestamp_hash = sha256(image_array[:50, ...].tostring()).hexdigest()
+print(timestamp_hash)
+heatmap_array[:50, ...] = 0
+heatmap_array = np.array(Image.fromarray(heatmap_array.astype(np.uint8)).quantize(palette=palette_image).convert('RGB'))
 for i, colour_tuple in enumerate(reversed(colours)):
-    output_array[(output_array == colour_tuple).all(axis = -1)] = tuple([i*255/(len(colours)-1)]*3)
-Image.fromarray((output_array).astype(np.uint8)).convert('RGB').save('output.png')
+    output_array[(heatmap_array == colour_tuple).all(axis = -1)] = i*255/(len(colours)-1)
+tuple_list = np.dstack(list(np.nonzero(output_array)) + [output_array[np.nonzero(output_array)]])[0]
+print(tuple_list)
+timestamp = datetime.datetime.now() - datetime.timedelta(minutes=15)
+print(timestamp)
+
+test_image_array = np.zeros(image_array.shape[:2], dtype=np.uint8)
+for y, x, i in tuple_list:
+    test_image_array[y, x] = i
+Image.fromarray((test_image_array).astype(np.uint8)).convert('RGB').save('output.png')
