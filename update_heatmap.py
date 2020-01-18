@@ -4,6 +4,7 @@ import requests
 from io import BytesIO
 from hashlib import sha256
 import datetime
+import json
 
 colours = [
     (255, 255, 255),
@@ -43,6 +44,23 @@ tuple_list = np.dstack(list(np.nonzero(output_array)) + [output_array[np.nonzero
 print(tuple_list)
 timestamp = datetime.datetime.now() - datetime.timedelta(minutes=15)
 print(timestamp)
+
+def add_heatmap(timestamp_hash, timestamp, heatmap_tuple_list):
+    with open('radar_heatmap.json') as f:
+        radar_heatmap_list = json.load(f)
+    if any([timestamp_hash == heatmap_dict['timestamp_hash'] for heatmap_dict in radar_heatmap_list]):
+        return False
+    if len(radar_heatmap_list) == 5:
+        radar_heatmap_list = radar_heatmap_list[1:]
+    radar_heatmap_list = radar_heatmap_list + [{
+        'timestamp_hash': timestamp_hash,
+        'timestamp': timestamp,
+        'heatmap': [tuple([int(i) for i in row]) for row in heatmap_tuple_list]
+    }]
+    with open('radar_heatmap.json', 'w') as f:
+        f.write(json.dumps(radar_heatmap_list, default=str))
+
+add_heatmap(timestamp_hash, timestamp, tuple_list)
 
 test_image_array = np.zeros(image_array.shape[:2], dtype=np.uint8)
 for y, x, i in tuple_list:
