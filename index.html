@@ -10,16 +10,21 @@
 </body>
 <script>
 i = 0
-fetch('./radar_heatmap.json')
-  .then(response => {
-    return response.json()
-  })
-  .then(data => {
-    setInterval(() => {
-      document.getElementById("radar_heatmap").src=data[i]['filename']
-      document.getElementById("timestamp").innerHTML=data[i]['timestamp']
-      i = (i + 1) % data.length
-    }, 1000)
-  })
+data = []
+headers = new Headers({'cache-control': 'no-cache'})
+async function update_file_list() {
+  response = await fetch('./radar_heatmap.json', headers)
+  data = await response.json()
+}
+function update_heatmap() {
+  if (data.length == 0) return
+  document.getElementById("radar_heatmap").src=data[i]['filename']
+  document.getElementById("timestamp").innerHTML=data[i]['timestamp']
+  i = (i + 1) % data.length
+}
+setInterval(update_heatmap, 1000)
+update_file_list()
+update_heatmap()
+setInterval(update_file_list, 1 * 60 * 1000)
 </script>
 </html>
