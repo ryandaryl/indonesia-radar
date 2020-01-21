@@ -1,11 +1,14 @@
+import matplotlib.cm
 from PIL import Image
 import numpy as np
 import requests
+import pytz
 from io import BytesIO
 from hashlib import sha256
 import datetime
 import json
 import os
+
 
 colours = [
     (255, 255, 255),
@@ -32,33 +35,36 @@ background_array = np.array(Image.open('west_java.png').convert('RGB'))
 image_url = 'https://dataweb.bmkg.go.id/MEWS/Radar/TANG_SingleLayerCRefQC.png'
 image_array = np.array(Image.open(BytesIO(requests.get(image_url).content)).convert('RGB'))
 # image_array = np.array(Image.open('TANG_SingleLayerCRefQC_1.png').convert('RGB'))
-heatmap_array = np.zeros(image_array.shape)
-output_array = np.zeros(image_array.shape[:2], dtype=np.uint8)
-heatmap_array[image_array != background_array] = image_array[image_array != background_array]
 timestamp_hash = sha256(image_array[:50, ...].tostring()).hexdigest()
+with open('radar_heatmap.json') as f:
+    radar_heatmap_list = json.load(f)
+if any([timestamp_hash == heatmap_dict['timestamp_hash'] for heatmap_dict in radar_heatmap_list]):
+    exit()
+heatmap_array = np.zeros(image_array.shape)
+grayscale_array = np.zeros(image_array.shape[:2], dtype=np.uint8)
+heatmap_array[image_array != background_array] = image_array[image_array != background_array]
 print(timestamp_hash)
 heatmap_array[:50, ...] = 0
 heatmap_array = np.array(Image.fromarray(heatmap_array.astype(np.uint8)).quantize(palette=palette_image).convert('RGB'))
 for i, colour_tuple in enumerate(reversed(colours)):
-    output_array[(heatmap_array == colour_tuple).all(axis = -1)] = i*255/(len(colours)-1)
-timestamp = datetime.datetime.now() - datetime.timedelta(minutes=15)
+    grayscale_array[(heatmap_array == colour_tuple).all(axis = -1)] = i*255/(len(colours)-1)
+output_array = (matplotlib.cm.get_cmap('coolwarm')(grayscale_array)*255).astype(np.uint8)
+output_array[:, :, 3][grayscale_array == 0] = 0
+print(output_array.shape)
+timestamp = (datetime.datetime.now(tz=pytz.timezone('Asia/Jakarta'))
+    - datetime.timedelta(minutes=6)).strftime('%Y-%m-%d %I:%M %p').replace(' 0', ' ')
 print(timestamp)
-
-def add_heatmap(timestamp_hash, timestamp, heatmap_array):
-    with open('radar_heatmap.json') as f:
-        radar_heatmap_list = json.load(f)
-    if any([timestamp_hash == heatmap_dict['timestamp_hash'] for heatmap_dict in radar_heatmap_list]):
-        return False
-    if len(radar_heatmap_list) == 5:
+if len(radar_heatmap_list) == 5:
+    try:
         os.remove(radar_heatmap_list[0]['filename'])
-        radar_heatmap_list = radar_heatmap_list[1:]
-    radar_heatmap_list = radar_heatmap_list + [{
-        'timestamp_hash': timestamp_hash,
-        'timestamp': timestamp,
-        'filename': timestamp_hash + '.png'
-    }]
-    with open('radar_heatmap.json', 'w') as f:
-        f.write(json.dumps(radar_heatmap_list, default=str))
-
-add_heatmap(timestamp_hash, timestamp, output_array)
-Image.fromarray((output_array).astype(np.uint8)).convert('RGB').save(timestamp_hash + '.png')
+    except:
+        pass
+    radar_heatmap_list = radar_heatmap_list[1:]
+radar_heatmap_list = radar_heatmap_list + [{
+    'timestamp_hash': timestamp_hash,
+    'timestamp': timestamp,
+    'filename': timestamp_hash + '.png'
+}]
+with open('radar_heatmap.json', 'w') as f:
+    f.write(json.dumps(radar_heatmap_list, default=str))
+Image.fromarray(output_array).save(timestamp_hash + '.png')

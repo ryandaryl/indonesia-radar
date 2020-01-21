@@ -1,21 +1,20 @@
 <html>
 <body style="margin: 20 0 0 0; padding: 0;">
 <div id="timestamp" style="position: absolute; top: 0px;"></div>
-<img style="height: 100%; width:100%; object-fit: contain;" id="radar_heatmap" />
 <div style="width: 100%;
   height: calc(100% - 20px);
   position: absolute;
   top: 20px;
-  background-color: red;
-  opacity: 0.5;"><img style="height: 100%; width:100%; object-fit: contain;" src="TANG_SingleLayerCRefQC_1.png" /></div>
+  z-index: -1;"><img style="height: 100%; width:100%; object-fit: contain;" src="west_java_map.svg" /></div>
+<img style="height: 100%; width:100%; object-fit: contain;" id="radar_heatmap" />
 </body>
 <script>
 i = 0
 data = []
-headers = new Headers({'cache-control': 'no-cache'})
 async function update_file_list() {
-  response = await fetch('./radar_heatmap.json', headers)
+  response = await fetch('./radar_heatmap.json', {'cache': 'no-cache'})
   data = await response.json()
+  console.log(data[4]['timestamp'])
 }
 function update_heatmap() {
   if (data.length == 0) return
