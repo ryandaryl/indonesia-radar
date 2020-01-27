@@ -14,7 +14,7 @@ data = []
 async function update_file_list() {
   response = await fetch('./radar_heatmap.json', {'cache': 'no-cache'})
   data = await response.json()
-  console.log(data[4]['timestamp'])
+  console.log(data[data.length - 1]['timestamp'])
 }
 function update_heatmap() {
   if (data.length == 0) return
