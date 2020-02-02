@@ -14,6 +14,9 @@ import os
 def write_image_local(path, content):
     Image.fromarray(output_array).save(path)
 
+def delete_image_local(path):
+    os.remove(path)
+
 def write_json_local(path, content):
     with open(path, 'w') as f:
         f.write(json.dumps(content, default=str))
@@ -27,6 +30,9 @@ def write_image_ftp(path, content):
     Image.fromarray(output_array).save(buffer, format= 'PNG')
     buffer.seek(0)
     ftp.storbinary('STOR ' + path, buffer)
+
+def delete_image_ftp(path):
+    ftp.delete(path)
 
 def write_json_ftp(path, content):
     ftp.storlines('STOR ' + path, BytesIO(bytes(json.dumps(content), encoding='utf8')))
@@ -65,6 +71,7 @@ ftp.cwd('/{}/{}/'.format(
     os.environ.get('FTP_DIRECTORY')
 ))
 write_image_func = write_image_ftp
+delete_image_func = delete_image_ftp
 write_json_func = write_json_ftp
 read_json_func = read_json_ftp
 
@@ -90,10 +97,12 @@ output_array[:, :, 3][grayscale_array == 0] = 0
 timestamp = (datetime.datetime.now(tz=pytz.timezone('Asia/Jakarta'))
     - datetime.timedelta(minutes=6)).strftime('%Y-%m-%d %I:%M %p').replace(' 0', ' ')
 if len(radar_heatmap_list) == 5:
-    try:
-        pass # os.remove(radar_heatmap_list[0]['filename'])
-    except:
-        pass
+    filename = radar_heatmap_list[0]['filename']
+    files = []
+    ftp.retrlines('LIST', callback=files.append)
+    files = [line.split(' ')[-1] for line in files]
+    if filename in files:
+        delete_image_func(filename)
     radar_heatmap_list = radar_heatmap_list[1:]
 radar_heatmap_list = radar_heatmap_list + [{
     'timestamp_hash': timestamp_hash,
