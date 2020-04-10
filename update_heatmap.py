@@ -82,7 +82,10 @@ image_url = 'https://dataweb.bmkg.go.id/MEWS/Radar/TANG_SingleLayerCRefQC.png'
 image_array = np.array(Image.open(BytesIO(requests.get(image_url).content)).convert('RGB'))
 # image_array = np.array(Image.open('TANG_SingleLayerCRefQC_1.png').convert('RGB'))
 timestamp_hash = sha256(image_array[:50, ...].tostring()).hexdigest()
-radar_heatmap_list = read_json_func('radar_heatmap.json')
+try:
+    radar_heatmap_list = read_json_func('radar_heatmap.json')
+except:
+    radar_heatmap_list = []
 if any([timestamp_hash == heatmap_dict['timestamp_hash'] for heatmap_dict in radar_heatmap_list]):
     exit()
 heatmap_array = np.zeros(image_array.shape)
