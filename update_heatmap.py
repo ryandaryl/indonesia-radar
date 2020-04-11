@@ -1,3 +1,4 @@
+from google_drive_utils import upload_file
 import matplotlib.cm
 from PIL import Image
 import numpy as np
@@ -80,6 +81,8 @@ palette_image.putpalette(sum([list(i) for i in colours], []))
 background_array = np.array(Image.open('west_java.png').convert('RGB'))
 image_url = 'https://dataweb.bmkg.go.id/MEWS/Radar/TANG_SingleLayerCRefQC.png'
 image_array = np.array(Image.open(BytesIO(requests.get(image_url).content)).convert('RGB'))
+timestamp = (datetime.datetime.now(tz=pytz.timezone('Asia/Jakarta'))
+    - datetime.timedelta(minutes=6)).strftime('%Y-%m-%d %I:%M %p').replace(' 0', ' ')
 # image_array = np.array(Image.open('TANG_SingleLayerCRefQC_1.png').convert('RGB'))
 timestamp_hash = sha256(image_array[:50, ...].tostring()).hexdigest()
 try:
@@ -95,10 +98,16 @@ heatmap_array[:50, ...] = 0
 heatmap_array = np.array(Image.fromarray(heatmap_array.astype(np.uint8)).quantize(palette=palette_image).convert('RGB'))
 for i, colour_tuple in enumerate(reversed(colours)):
     grayscale_array[(heatmap_array == colour_tuple).all(axis = -1)] = i*255/(len(colours)-1)
+output_file_name = timestamp.replace(' ', '_') + '.png'
+Image.fromarray(grayscale_array).save(output_file_name)
+upload_file(
+    file_name=output_file_name,
+    directory='data',
+    parent_directory='west-java',
+    mimetype='image/png')
+os.remove(output_file_name)
 output_array = (matplotlib.cm.get_cmap('coolwarm')(grayscale_array)*255).astype(np.uint8)
 output_array[:, :, 3][grayscale_array == 0] = 0
-timestamp = (datetime.datetime.now(tz=pytz.timezone('Asia/Jakarta'))
-    - datetime.timedelta(minutes=6)).strftime('%Y-%m-%d %I:%M %p').replace(' 0', ' ')
 if len(radar_heatmap_list) == 5:
     filename = radar_heatmap_list[0]['filename']
     files = []
